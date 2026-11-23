@@ -1,16 +1,18 @@
 use crate::bot::Bot;
-use crate::types::{CallbackQuery, Message};
+use crate::types::{CallbackQuery, InlineQuery, Message};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
 pub type MessageHandlerFn = Arc<dyn Fn(Bot, Message) -> Result<(), String> + Send + Sync>;
 pub type CallbackHandlerFn = Arc<dyn Fn(Bot, CallbackQuery) -> Result<(), String> + Send + Sync>;
+pub type InlineQueryHandlerFn = Arc<dyn Fn(Bot, InlineQuery) -> Result<(), String> + Send + Sync>;
 
 pub struct Dispatcher {
     bot: Bot,
     command_handlers: Vec<(String, MessageHandlerFn)>,
     callback_handlers: Vec<(String, CallbackHandlerFn)>,
+    inline_query_handler: Option<InlineQueryHandlerFn>,
     default_message_handler: Option<MessageHandlerFn>,
     default_callback_handler: Option<CallbackHandlerFn>,
 }
@@ -21,6 +23,7 @@ impl Dispatcher {
             bot,
             command_handlers: Vec::new(),
             callback_handlers: Vec::new(),
+            inline_query_handler: None,
             default_message_handler: None,
             default_callback_handler: None,
         }
@@ -48,6 +51,14 @@ impl Dispatcher {
         self
     }
 
+    pub fn inline_query<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Bot, InlineQuery) -> Result<(), String> + Send + Sync + 'static,
+    {
+        self.inline_query_handler = Some(Arc::new(handler));
+        self
+    }
+
     pub fn default_handler<F>(mut self, handler: F) -> Self
     where
         F: Fn(Bot, Message) -> Result<(), String> + Send + Sync + 'static,
@@ -69,8 +80,8 @@ impl Dispatcher {
         println!("🚀 Запуск Ferrogram Telegram Engine (Relax JIT)");
         println!("==================================================");
         let me = self.bot.get_me()?;
-        println!("🤖 Бот авторизован: @{} (ID: {})", me.username.unwrap_or_default(), me.id);
-        println!("⚡ Поллинг запущен! Поддержка: Текст, Фото, Инлайн-кнопки, Редактирование");
+        println!("🤖 Бот: @{} (ID: {})", me.username.unwrap_or_default(), me.id);
+        println!("🎮 Инлайн-режим активирован: можно вызывать через @bot_username в любых чатах!");
         println!("==================================================");
 
         let mut offset = 0;
@@ -81,7 +92,21 @@ impl Dispatcher {
                     for update in updates {
                         offset = update.update_id + 1;
 
-                        // 1. Обработка нажатий на инлайн-кнопки (Callback Queries)
+                        // 1. Обработка Inline Query (когда в чате пишут @bot_username)
+                        if let Some(iq) = update.inline_query {
+                            if let Some(h) = &self.inline_query_handler {
+                                let bot = self.bot.clone();
+                                let h = h.clone();
+                                thread::spawn(move || {
+                                    if let Err(e) = h(bot, iq) {
+                                        eprintln!("Ошибка inline_query: {}", e);
+                                    }
+                                });
+                            }
+                            continue;
+                        }
+
+                        // 2. Обработка нажатий на инлайн-кнопки
                         if let Some(cb) = update.callback_query {
                             if let Some(data) = &cb.data {
                                 let mut handled = false;
@@ -92,7 +117,7 @@ impl Dispatcher {
                                         let h = handler.clone();
                                         thread::spawn(move || {
                                             if let Err(e) = h(bot, cb_clone) {
-                                                eprintln!("Ошибка в callback-хэндлере: {}", e);
+                                                eprintln!("Ошибка callback: {}", e);
                                             }
                                         });
                                         handled = true;
@@ -107,7 +132,7 @@ impl Dispatcher {
                                         let h = def_cb.clone();
                                         thread::spawn(move || {
                                             if let Err(e) = h(bot, cb_clone) {
-                                                eprintln!("Ошибка в дефолтном callback: {}", e);
+                                                eprintln!("Ошибка дефолтного callback: {}", e);
                                             }
                                         });
                                     }
@@ -116,7 +141,7 @@ impl Dispatcher {
                             continue;
                         }
 
-                        // 2. Обработка обычных сообщений
+                        // 3. Обработка обычных сообщений
                         if let Some(msg) = update.message {
                             if let Some(text) = &msg.text {
                                 let mut handled = false;

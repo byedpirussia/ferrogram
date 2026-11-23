@@ -70,27 +70,24 @@ impl Bot {
         }
     }
 
-    pub fn send_photo(
+    pub fn answer_inline_query(
         &self,
-        chat_id: i64,
-        photo_url_or_id: &str,
-        caption: Option<&str>,
-        reply_markup: Option<ReplyMarkup>,
-    ) -> Result<Message, String> {
-        let url = format!("{}/sendPhoto", self.api_url);
-        let payload = SendPhotoPayload {
-            chat_id,
-            photo: photo_url_or_id,
-            caption,
-            parse_mode: Some("HTML"),
-            reply_markup,
+        inline_query_id: &str,
+        results: &[InlineQueryResult],
+    ) -> Result<bool, String> {
+        let url = format!("{}/answerInlineQuery", self.api_url);
+        let payload = AnswerInlineQueryPayload {
+            inline_query_id,
+            results,
+            cache_time: Some(1),
+            is_personal: Some(true),
         };
 
         let resp = self.agent.post(&url).send_json(&payload).map_err(|e| format!("HTTP error: {}", e))?;
-        let body: TelegramResponse<Message> = resp.into_json().map_err(|e| format!("JSON error: {}", e))?;
+        let body: TelegramResponse<bool> = resp.into_json().map_err(|e| format!("JSON error: {}", e))?;
 
-        if body.ok && body.result.is_some() {
-            Ok(body.result.unwrap())
+        if body.ok {
+            Ok(body.result.unwrap_or(true))
         } else {
             Err(body.description.unwrap_or_else(|| "Unknown error".into()))
         }
@@ -128,8 +125,9 @@ impl Bot {
     ) -> Result<Message, String> {
         let url = format!("{}/editMessageText", self.api_url);
         let payload = EditMessageTextPayload {
-            chat_id,
-            message_id,
+            chat_id: Some(chat_id),
+            message_id: Some(message_id),
+            inline_message_id: None,
             text,
             parse_mode: Some("HTML"),
             reply_markup,
@@ -145,9 +143,21 @@ impl Bot {
         }
     }
 
-    pub fn delete_message(&self, chat_id: i64, message_id: i64) -> Result<bool, String> {
-        let url = format!("{}/deleteMessage", self.api_url);
-        let payload = DeleteMessagePayload { chat_id, message_id };
+    pub fn edit_inline_message_text(
+        &self,
+        inline_message_id: &str,
+        text: &str,
+        reply_markup: Option<InlineKeyboardMarkup>,
+    ) -> Result<bool, String> {
+        let url = format!("{}/editMessageText", self.api_url);
+        let payload = EditMessageTextPayload {
+            chat_id: None,
+            message_id: None,
+            inline_message_id: Some(inline_message_id),
+            text,
+            parse_mode: Some("HTML"),
+            reply_markup,
+        };
 
         let resp = self.agent.post(&url).send_json(&payload).map_err(|e| format!("HTTP error: {}", e))?;
         let body: TelegramResponse<bool> = resp.into_json().map_err(|e| format!("JSON error: {}", e))?;

@@ -24,48 +24,7 @@ pub struct Chat {
     pub last_name: Option<String>,
 }
 
-// --- Медиа типы ---
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PhotoSize {
-    pub file_id: String,
-    pub file_unique_id: String,
-    pub width: i32,
-    pub height: i32,
-    pub file_size: Option<i64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Document {
-    pub file_id: String,
-    pub file_unique_id: String,
-    pub file_name: Option<String>,
-    pub mime_type: Option<String>,
-    pub file_size: Option<i64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Audio {
-    pub file_id: String,
-    pub file_unique_id: String,
-    pub duration: i32,
-    pub performer: Option<String>,
-    pub title: Option<String>,
-    pub file_name: Option<String>,
-    pub mime_type: Option<String>,
-    pub file_size: Option<i64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Voice {
-    pub file_id: String,
-    pub file_unique_id: String,
-    pub duration: i32,
-    pub mime_type: Option<String>,
-    pub file_size: Option<i64>,
-}
-
-// --- Клавиатуры и кнопки (Inline и Reply) ---
+// --- Клавиатуры и кнопки (Inline) ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InlineKeyboardButton {
@@ -106,54 +65,9 @@ impl InlineKeyboardMarkup {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct KeyboardButton {
-    pub text: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub request_contact: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub request_location: Option<bool>,
-}
-
-impl KeyboardButton {
-    pub fn text(text: impl Into<String>) -> Self {
-        Self {
-            text: text.into(),
-            request_contact: None,
-            request_location: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ReplyKeyboardMarkup {
-    pub keyboard: Vec<Vec<KeyboardButton>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub resize_keyboard: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub one_time_keyboard: Option<bool>,
-}
-
-impl ReplyKeyboardMarkup {
-    pub fn new(rows: Vec<Vec<KeyboardButton>>) -> Self {
-        Self {
-            keyboard: rows,
-            resize_keyboard: Some(true),
-            one_time_keyboard: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ReplyKeyboardRemove {
-    pub remove_keyboard: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ReplyMarkup {
     Inline(InlineKeyboardMarkup),
-    Reply(ReplyKeyboardMarkup),
-    Remove(ReplyKeyboardRemove),
 }
 
 // --- CallbackQuery ---
@@ -163,7 +77,43 @@ pub struct CallbackQuery {
     pub id: String,
     pub from: User,
     pub message: Option<Message>,
+    pub inline_message_id: Option<String>,
     pub data: Option<String>,
+}
+
+// --- Inline Query (Инлайн-режим) ---
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InlineQuery {
+    pub id: String,
+    pub from: User,
+    pub query: String,
+    pub offset: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InputTextMessageContent {
+    pub message_text: String,
+    pub parse_mode: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InlineQueryResultArticle {
+    #[serde(rename = "type")]
+    pub result_type: String, // "article"
+    pub id: String,
+    pub title: String,
+    pub input_message_content: InputTextMessageContent,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_markup: Option<InlineKeyboardMarkup>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum InlineQueryResult {
+    Article(InlineQueryResultArticle),
 }
 
 // --- Сообщение ---
@@ -175,12 +125,6 @@ pub struct Message {
     pub chat: Chat,
     pub date: i64,
     pub text: Option<String>,
-    pub photo: Option<Vec<PhotoSize>>,
-    pub document: Option<Document>,
-    pub audio: Option<Audio>,
-    pub voice: Option<Voice>,
-    pub caption: Option<String>,
-    pub reply_to_message: Option<Box<Message>>,
 }
 
 // --- Обновление (Update) ---
@@ -189,8 +133,8 @@ pub struct Message {
 pub struct Update {
     pub update_id: i64,
     pub message: Option<Message>,
-    pub edited_message: Option<Message>,
     pub callback_query: Option<CallbackQuery>,
+    pub inline_query: Option<InlineQuery>,
 }
 
 // --- Ответы Telegram ---
@@ -215,18 +159,6 @@ pub struct SendMessagePayload<'a> {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SendPhotoPayload<'a> {
-    pub chat_id: i64,
-    pub photo: &'a str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub caption: Option<&'a str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parse_mode: Option<&'a str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reply_markup: Option<ReplyMarkup>,
-}
-
-#[derive(Debug, Serialize)]
 pub struct AnswerCallbackQueryPayload<'a> {
     pub callback_query_id: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -237,8 +169,12 @@ pub struct AnswerCallbackQueryPayload<'a> {
 
 #[derive(Debug, Serialize)]
 pub struct EditMessageTextPayload<'a> {
-    pub chat_id: i64,
-    pub message_id: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chat_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inline_message_id: Option<&'a str>,
     pub text: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parse_mode: Option<&'a str>,
@@ -247,7 +183,11 @@ pub struct EditMessageTextPayload<'a> {
 }
 
 #[derive(Debug, Serialize)]
-pub struct DeleteMessagePayload {
-    pub chat_id: i64,
-    pub message_id: i64,
+pub struct AnswerInlineQueryPayload<'a> {
+    pub inline_query_id: &'a str,
+    pub results: &'a [InlineQueryResult],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_time: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_personal: Option<bool>,
 }
