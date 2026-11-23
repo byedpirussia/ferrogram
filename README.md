@@ -118,7 +118,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ---
 
-## 🏃 Running the Examples
+## 🚀 Running Prebuilt Binaries (No Rust or Compilers Required!)
+
+If you just want to run a fast Telegram bot without installing Rust:
+
+1. Download the latest `ferrogram-v0.1.0-windows-x64.zip` from [Releases](https://github.com/byedpirussia/ferrogram/releases).
+2. Unzip the archive.
+3. Open PowerShell in that folder and run:
+   ```powershell
+   # 1. Provide your Telegram Bot token from @BotFather
+   $env:TELEGRAM_BOT_TOKEN="your_token_here"
+
+   # 2. Run the prebuilt interactive bot!
+   .\ferrogram-interactive-bot-windows-x64.exe
+   ```
+
+---
+
+## 🏃 Running from Source
 
 ```bash
 # Set your bot token

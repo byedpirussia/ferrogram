@@ -110,7 +110,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ---
 
-## 🏃 Запуск примеров
+## 🚀 Запуск готового EXE (Без установки Rust и компиляторов!)
+
+Если вы хотите просто запустить готового быстрого бота без сборки:
+
+1. Скачайте архив `ferrogram-v0.1.0-windows-x64.zip` со страницы [Релизов](https://github.com/byedpirussia/ferrogram/releases).
+2. Распакуйте архив в удобную папку.
+3. Откройте PowerShell в этой папке и выполните:
+   ```powershell
+   # 1. Укажите токен бота от @BotFather
+   $env:TELEGRAM_BOT_TOKEN="ваш_токен_здесь"
+
+   # 2. Запустите готовый интерактивный бот
+   .\ferrogram-interactive-bot-windows-x64.exe
+   ```
+
+---
+
+## 🏃 Запуск из исходного кода
 
 В PowerShell:
 ```powershell
