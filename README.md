@@ -6,6 +6,10 @@
 </p>
 
 <p align="center">
+  <a href="README_RU.md">🇷🇺 Читать на русском языке (Russian version)</a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/language-Rust-orange.svg" alt="Rust">
   <img src="https://img.shields.io/badge/RAM-~5MB-brightgreen.svg" alt="RAM usage">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
